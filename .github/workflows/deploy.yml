@@ -1,0 +1,82 @@
+name: Deploy Nginx Instances
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2  # Fetch previous commit for diff
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.8.0
+          terraform_wrapper: false
+      - name: Install Terragrunt
+        run: |
+          curl -L https://github.com/gruntwork-io/terragrunt/releases/download/v0.55.1/terragrunt_linux_amd64 -o /usr/local/bin/terragrunt
+          chmod +x /usr/local/bin/terragrunt
+          terragrunt --version     
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy Instances
+        run: |
+          # Get changed or added files between this commit and the previous one
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+
+          # Check if any directories exist under live/
+          if ls live/* >/dev/null 2>&1; then
+            # Loop over all subdirectories in live/
+            for dir in live/*; do
+              # Process only directories containing terragrunt.hcl
+              if [ -f "$dir/terragrunt.hcl" ]; then
+                # Check if this directory's terragrunt.hcl was added or modified
+                if echo "$CHANGED_FILES" | grep -Fxq "$dir/terragrunt.hcl"; then
+                  echo "Deploying $dir (new or changed)..."
+                  cd "$dir"
+                  pwd
+                  
+                  # Initialize and apply Terragrunt
+                   terragrunt init -upgrade -no-color --terragrunt-non-interactive || { echo "Init failed"; exit 1; }
+                  terragrunt apply -auto-approve -no-color --terragrunt-non-interactive || { echo "Apply failed"; exit 1; }
+                  
+                  
+                  # Extract outputs and variables
+                  PUBLIC_IP=$(terragrunt output -raw instance_public_ip)
+                  NGINX_VERSION=$(grep -oP 'nginx_version\s*=\s*"\K[^"]+' terragrunt.hcl || echo "default")
+                  LISTEN_PORT=$(grep -oP 'nginx_port\s*=\s*"\K[^"]+' terragrunt.hcl || echo "80")
+                  SERVER_NAME=$(grep -oP 'server_name\s*=\s*"\K[^"]+' terragrunt.hcl || echo "localhost")
+                  
+                  # Output details for manual testing
+                  echo "Instance deployed in: $dir"
+                  echo "Public IP: $PUBLIC_IP"
+                  echo "NGINX Version: $NGINX_VERSION"
+                  echo "Listen Port: $LISTEN_PORT"
+                  echo "Server Name: $SERVER_NAME"
+                  echo "Run manual test locally with: ./scripts/test-nginx.sh '$NGINX_VERSION' '$LISTEN_PORT' '$SERVER_NAME' '$PUBLIC_IP' /path/to/your/local/ssh_key.pem"
+                  echo "--------------------------------"
+                  
+                  cd ../..
+                else
+                  echo "Skipping $dir (unchanged)"
+                fi
+              else
+                echo "Skipping $dir (no terragrunt.hcl found)"
+              fi
+            done
+          else
+            echo "No directories found in live/. Skipping deployment."
+          fi
