@@ -35,19 +35,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
-      - name: Write SSH Key
-        run: |
-          echo "Writing SSH key to /tmp/ssh_key.pem"
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/ssh_key.pem
-          chmod 600 /tmp/ssh_key.pem
-          echo "First line of key:"
-          head -n 1 /tmp/ssh_key.pem  # Should show -----BEGIN
-          echo "File type:"
-          file /tmp/ssh_key.pem       # Should show PEM or ASCII text
-          echo "Key contents (partial):"
-          cat /tmp/ssh_key.pem | head -n 5  # Show start of key for debug
-
-      - name: Deploy and Test Instances
+      - name: Deploy Instances
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
           if ls live/* >/dev/null 2>&1; then
@@ -70,23 +58,11 @@ jobs:
                   echo "Nginx Port: $NGINX_PORT"
                   echo "Server Name: $SERVER_NAME"
                   echo "Install Method: $INSTALL_METHOD"
-                  echo "Testing instance at $PUBLIC_IP..."
-                  chmod +x ../../scripts/test-nginx.sh
-                  echo "Test script args: [$NGINX_VERSION] [$NGINX_PORT] [$SERVER_NAME] [$PUBLIC_IP] [/tmp/ssh_key.pem] [$INSTALL_METHOD]"
-                  ../../scripts/test-nginx.sh "$NGINX_VERSION" "$NGINX_PORT" "$SERVER_NAME" "$PUBLIC_IP" "/tmp/ssh_key.pem" "$INSTALL_METHOD" || {
-                    echo "Tests failed for $dir, retrieving debug logs..."
-                    sleep 60  # Increased initial delay for instance boot
-                    for i in {1..10}; do
-                      ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem ubuntu@$PUBLIC_IP "cat /tmp/user_data.log || echo 'No user_data.log'; cat /tmp/chef_output.txt || echo 'No chef_output.txt'; cat /tmp/nginx_check.txt || echo 'No nginx_check.txt'; cat /tmp/nginx_status.txt || echo 'No nginx_status.txt'" && break
-                      echo "SSH attempt $i failed, retrying in 15 seconds..."
-                      sleep 15
-                    done
-                    echo "Destroying instance in $dir..."
-                    terragrunt destroy -auto-approve -no-color --terragrunt-non-interactive
-                    exit 1
-                  }
-                  echo "Tests passed for $dir, displaying logs..."
-                  ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem ubuntu@$PUBLIC_IP "cat /tmp/user_data.log || echo 'No user_data.log'; cat /tmp/chef_output.txt || echo 'No chef_output.txt'; cat /tmp/nginx_check.txt || echo 'No nginx_check.txt'; cat /tmp/nginx_status.txt || echo 'No nginx_status.txt'"
+                  echo "Run manual test locally with: ./scripts/test-nginx.sh '$NGINX_VERSION' '$NGINX_PORT' '$SERVER_NAME' '$PUBLIC_IP' /path/to/your/local/ssh_key.pem '$INSTALL_METHOD'"
+                  echo "After SSHing into the instance (ssh -i /path/to/your/local/ssh_key.pem ubuntu@$PUBLIC_IP), check logs:"
+                  echo "  - /tmp/user_data.log: Full script execution log"
+                  echo "  - /tmp/chef_output.txt: Chef execution details"
+                  echo "  - /tmp/nginx_check.txt: Nginx package status"
                   echo "--------------------------------"
                   cd ../..
                 else
