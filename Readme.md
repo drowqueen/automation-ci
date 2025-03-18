@@ -26,7 +26,7 @@ inputs = {
   key_name          = "my-key-pair"
   instance_name     = "nginx-instance-2"
   install_method    = "package"                # or "source"
-  nginx_version     = "1.18.0-0ubuntu1.4"
+  nginx_version     = "1.24.0-2ubuntu7.1"  # Version 1.24.0
   source_branch     = "main"
   worker_processes  = "auto"
   nginx_port        = "80"
@@ -40,6 +40,12 @@ Push changes to the branch, when the branch is merged it will trigger the github
 Check the GitHub Actions workflow logs or use terragrunt output command in live/instance-name folder to retrieve the public IP.  Run the test script from repo root using the parameters you provided and the public IP of the instance:
 ````
 ./scripts/test-nginx.sh <NGINX Version> <port> <server_name> <public_IP> <install_method> /path/to/ssh-key-pair
+```
+
+Example: 
+
+````
+ ./scripts/test-nginx.sh '1.24.0' '8080' 'test2' '176.34.148.205' 'package' nginx-key.pem 
 ```
 
 
