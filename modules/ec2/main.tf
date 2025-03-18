@@ -27,10 +27,6 @@ resource "aws_security_group" "nginx_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  lifecycle {
-    prevent_destroy = true
-    ignore_changes  = []
-  }
 }
 
 resource "aws_instance" "nginx_instance" {
