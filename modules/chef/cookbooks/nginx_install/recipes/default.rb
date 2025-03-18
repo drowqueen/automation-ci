@@ -21,9 +21,10 @@ template '/etc/nginx/nginx.conf' do
     server_name: node['server_name'],
     install_method: node['install_method']
   )
-  notifies :restart, 'service[nginx]', :delayed  # Restart only after config is applied
+  notifies :restart, 'service[nginx]', :delayed
 end
 
+# Only define service resource, let specific recipes manage it
 service 'nginx' do
-  action :nothing  # Managed by package/source recipes and config template
+  action :nothing
 end

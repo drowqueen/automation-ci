@@ -2,28 +2,21 @@ provider "aws" {
   region = var.aws_region
 }
 
-terraform {
-  backend "s3" {}
-}
-
 resource "aws_security_group" "nginx_sg" {
-  name        = "${var.instance_name}-sg"
+  name        = "nginx-sg-${var.instance_name}"
   description = "Allow SSH and Nginx traffic"
-
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Restrict this for better security
+    cidr_blocks = ["0.0.0.0/0"]
   }
-
   ingress {
     from_port   = var.nginx_port
-    to_port     = var.nginx_port  
+    to_port     = var.nginx_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -58,6 +51,5 @@ resource "aws_instance" "nginx_instance" {
 
   tags = {
     Name = var.instance_name
-    Owner = "terragrunt"
   }
 }

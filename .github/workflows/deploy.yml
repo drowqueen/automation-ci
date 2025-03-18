@@ -52,7 +52,7 @@ jobs:
                   pwd
                   
                   # Initialize and apply Terragrunt
-                   terragrunt init -upgrade -no-color --terragrunt-non-interactive || { echo "Init failed"; exit 1; }
+                  terragrunt init -upgrade -no-color --terragrunt-non-interactive || { echo "Init failed"; exit 1; }
                   terragrunt apply -auto-approve -no-color --terragrunt-non-interactive || { echo "Apply failed"; exit 1; }
                   
                   
