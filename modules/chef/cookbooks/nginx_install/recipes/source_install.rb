@@ -1,4 +1,3 @@
-# Install build dependencies for Ubuntu
 package %w(gcc make zlib1g-dev libpcre3-dev libssl-dev)
 
 git '/tmp/nginx-source' do
@@ -18,6 +17,16 @@ template '/etc/systemd/system/nginx.service' do
   owner 'root'
   group 'root'
   mode '0644'
+  notifies :run, 'execute[reload-systemd]', :immediately
+end
+
+execute 'reload-systemd' do
+  command 'systemctl daemon-reload'
+  action :nothing
+end
+
+service 'nginx' do
+  action [:enable, :start]
 end
 
 directory '/usr/local/nginx/html' do

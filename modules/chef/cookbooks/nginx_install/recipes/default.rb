@@ -18,11 +18,12 @@ template '/etc/nginx/nginx.conf' do
   variables(
     worker_processes: node['worker_processes'],
     listen_port: node['listen_port'],
-    server_name: node['server_name']
+    server_name: node['server_name'],
+    install_method: node['install_method']
   )
-  notifies :restart, 'service[nginx]', :delayed
+  notifies :restart, 'service[nginx]', :delayed  # Restart only after config is applied
 end
 
 service 'nginx' do
-  action [:enable, :start]
+  action :nothing  # Managed by package/source recipes and config template
 end
