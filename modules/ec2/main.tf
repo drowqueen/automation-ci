@@ -39,16 +39,16 @@ resource "aws_instance" "nginx_instance" {
                   set -x  # Enable command tracing
                   echo "Starting user_data script" > /tmp/user_data.log
                   apt-get update >> /tmp/user_data.log 2>&1 || { echo "apt-get update failed" >> /tmp/user_data.log; exit 1; }
-                  apt-get install -y ruby ruby-dev build-essential >> /tmp/user_data.log 2>&1 || { echo "apt-get install ruby ruby-dev build-essential failed" >> /tmp/user_data.log; exit 1; }
-                  gem install chef -v 17.10.0 --no-document >> /tmp/user_data.log 2>&1 || { echo "gem install chef failed" >> /tmp/user_data.log; exit 1; }
-                  # Find chef-solo binary and add to PATH
-                  CHEF_SOLO=$(find / -name chef-solo -type f 2>/dev/null | head -n 1)
-                  if [ -z "$CHEF_SOLO" ]; then
-                    echo "chef-solo not found" >> /tmp/user_data.log
+                  # Install Chef via official package
+                  apt-get install -y wget >> /tmp/user_data.log 2>&1 || { echo "apt-get install wget failed" >> /tmp/user_data.log; exit 1; }
+                  wget -q https://packages.chef.io/files/stable/chef/17.10.0/ubuntu/20.04/chef_17.10.0-1_amd64.deb >> /tmp/user_data.log 2>&1 || { echo "wget chef failed" >> /tmp/user_data.log; exit 1; }
+                  dpkg -i chef_17.10.0-1_amd64.deb >> /tmp/user_data.log 2>&1 || { echo "dpkg install chef failed" >> /tmp/user_data.log; exit 1; }
+                  # Verify chef-solo
+                  if ! command -v chef-solo >/dev/null 2>&1; then
+                    echo "chef-solo not found after install" >> /tmp/user_data.log
                     exit 1
                   else
-                    echo "Found chef-solo at $CHEF_SOLO" >> /tmp/user_data.log
-                    export PATH=$PATH:$(dirname "$CHEF_SOLO")
+                    echo "chef-solo found at $(which chef-solo)" >> /tmp/user_data.log
                   fi
                   mkdir -p /opt/chef/cookbooks/nginx_install/recipes >> /tmp/user_data.log 2>&1
                   mkdir -p /opt/chef/cookbooks/nginx_install/templates >> /tmp/user_data.log 2>&1
