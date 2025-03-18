@@ -1,4 +1,3 @@
-
 name: Deploy Nginx Instances
 
 on:
@@ -37,8 +36,6 @@ jobs:
           aws-region: eu-west-1
 
       - name: Deploy Instances
-        env:
-          CHEF_LICENSE: "accept"
         run: |
           set -x  # Enable tracing for debugging
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
@@ -55,19 +52,16 @@ jobs:
                   PUBLIC_IP=$(terragrunt output -raw instance_public_ip 2>/dev/null || echo "Not available")
                   NGINX_VERSION=$(grep -oP 'nginx_version\s*=\s*"\K[^"]+' terragrunt.hcl || echo "default")
                   NGINX_PORT=$(grep -oP 'nginx_port\s*=\s*"\K[^"]+' terragrunt.hcl || echo "80")
-                  SERVER_NAME=$(grep -oP 'server_name\s*=\s*"\K[^"]+' terragrunt.hcl || echo "localhost")
                   INSTALL_METHOD=$(grep -oP 'install_method\s*=\s*"\K[^"]+' terragrunt.hcl || echo "package")
                   echo "Instance deployed in: $dir"
                   echo "Public IP: $PUBLIC_IP"
-                  echo "NGINX Version: $NGINX_VERSION"
+                  echo "NGINX Version: $NGINX_VERSION (source method) or from package repo"
                   echo "Nginx Port: $NGINX_PORT"
-                  echo "Server Name: $SERVER_NAME"
                   echo "Install Method: $INSTALL_METHOD"
-                  echo "Run manual test locally with: ./scripts/test-nginx.sh '$NGINX_VERSION' '$NGINX_PORT' '$SERVER_NAME' '$PUBLIC_IP' /path/to/your/local/ssh_key.pem '$INSTALL_METHOD'"
+                  echo "Run manual test locally with: curl http://$PUBLIC_IP:$NGINX_PORT"
                   echo "After SSHing into the instance (ssh -i /path/to/your/local/ssh_key.pem ubuntu@$PUBLIC_IP), check logs:"
                   echo "  - /tmp/user_data.log: Full script execution log"
-                  echo "  - /tmp/chef_output.txt: Chef execution details"
-                  echo "  - /tmp/nginx_check.txt: Nginx package status"
+                  echo "  - /tmp/nginx_check.txt: Nginx version and status"
                   echo "--------------------------------"
                   cd ../..
                 else
