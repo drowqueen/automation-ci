@@ -8,7 +8,7 @@ terraform {
 
 inputs = {
   aws_region        = "eu-west-1"
-  ami_id            = "ami-0c55b159cbfafe1f0"  # Ubuntu 24.04 LTS
+  ami_id            = "ami-03fd334507439f4d1"  # Ubuntu 24.04 
   instance_type     = "t2.micro"
   instance_name     = "instance-2"
   install_method    = "package"
