@@ -21,9 +21,18 @@ echo "Checking if Nginx is installed..."
 if [ "$INSTALL_METHOD" = "package" ]; then
     $SSH "dpkg -l | grep -q nginx" || { echo "Nginx package not installed"; exit 1; }
     echo "Nginx package is installed"
+elif [ "$INSTALL_METHOD" = "source" ]; then
+    $SSH "nginx -v >/tmp/nginx_check.txt 2>&1" 
+    $SSH "test -f /tmp/nginx_check.txt && grep -q 'nginx version' /tmp/nginx_check.txt" || { 
+        echo "Nginx not found or not installed from source"; 
+        $SSH "rm -f /tmp/nginx_check.txt"; 
+        exit 1; 
+    }
+    $SSH "rm -f /tmp/nginx_check.txt"
+    echo "Nginx source installation detected"
 else
-    echo "Unsupported install_method: $INSTALL_METHOD (only 'package' supported)"; exit 1
-fi
+    echo "Invalid install_method: must be 'package' or 'source'"
+    exit 1
 
 # 2. Verify Nginx service is running
 echo "Checking if Nginx service is running..."
