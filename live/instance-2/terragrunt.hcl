@@ -15,6 +15,6 @@ inputs = {
   nginx_version     = "1.18.0-0ubuntu1.4"
   source_branch     = "main"
   worker_processes  = "auto"
-  nginx_port        = "80"
+  nginx_port        = "8080"
   server_name       = "test"
 }
