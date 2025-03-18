@@ -24,23 +24,35 @@ resource "aws_security_group" "nginx_sg" {
   count       = local.sg_exists ? 0 : 1
   name        = "nginx-sg-${var.instance_name}"
   description = "Allow SSH and Nginx traffic"
+
+  # SSH ingress rule
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  # Nginx port ingress rule (dynamic based on var.nginx_port)
   ingress {
     from_port   = var.nginx_port
     to_port     = var.nginx_port
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  # Egress rule
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0/0"]
+  }
+
+  # Prevent destruction if attached to instance
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = []  # Allow in-place updates to ingress rules
   }
 }
 
