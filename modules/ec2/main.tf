@@ -39,14 +39,17 @@ resource "aws_instance" "nginx_instance" {
                   cd /opt/chef
                   curl -L https://github.com/chef/chef/archive/refs/tags/v17.10.0.tar.gz | tar xz --strip-components=1
                   echo 'cookbook_path "/opt/chef/cookbooks"' > solo.rb
-                  mkdir -p cookbooks/nginx_install
+                  mkdir -p cookbooks/nginx_install/recipes
+                  mkdir -p cookbooks/nginx_install/templates
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/recipes/default.rb"))}' | base64 -d > cookbooks/nginx_install/recipes/default.rb
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/recipes/package_install.rb"))}' | base64 -d > cookbooks/nginx_install/recipes/package_install.rb
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/recipes/source_install.rb"))}' | base64 -d > cookbooks/nginx_install/recipes/source_install.rb
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/templates/nginx.conf.erb"))}' | base64 -d > cookbooks/nginx_install/templates/nginx.conf.erb
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/templates/nginx.service.erb"))}' | base64 -d > cookbooks/nginx_install/templates/nginx.service.erb
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/metadata.rb"))}' | base64 -d > cookbooks/nginx_install/metadata.rb
-                  chef-solo -c solo.rb -o nginx_install::default
+                  # Debug: List files to confirm
+                  ls -R cookbooks/nginx_install/ > /tmp/cookbook_files.txt
+                  chef-solo -c solo.rb -o nginx_install::default || echo "Chef failed" > /tmp/chef_error.txt
                   EOF
 
   tags = {
