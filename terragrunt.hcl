@@ -2,9 +2,9 @@
 remote_state {
   backend = "s3"
   config = {
-    bucket         = "terragrunt-state-drq"  # Replace with your S3 bucket name
+    bucket         = "tg-state-drq"  # Replace with your S3 bucket name
     key            = "${path_relative_to_include()}/terraform.tfstate"
-    region         = "us-east-1"                   # Match your AWS region
+    region         = "eu-west-1"                   # Match your AWS region
     dynamodb_table = "my-terragrunt-locks"         # Optional: For state locking
   }
 }
