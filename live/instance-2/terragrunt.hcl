@@ -16,5 +16,5 @@ inputs = {
   source_branch     = "main"
   worker_processes  = "auto"
   nginx_port        = "80"
-  server_name       = "testserver"
+  server_name       = "test"
 }

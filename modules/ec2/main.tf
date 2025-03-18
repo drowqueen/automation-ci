@@ -64,9 +64,10 @@ resource "aws_instance" "nginx_instance" {
                   else
                     echo "chef-solo found at $(which chef-solo)" >> /tmp/user_data.log
                   fi
-                  # Accept Chef license
+                  # Accept Chef license (both config file and flag)
                   mkdir -p /etc/chef >> /tmp/user_data.log 2>&1
                   echo 'chef_license "accept"' > /etc/chef/client.rb 2>>/tmp/user_data.log || { echo "Failed to write client.rb" >> /tmp/user_data.log; exit 1; }
+                  export CHEF_LICENSE="accept"  # Set environment variable as fallback
                   mkdir -p /opt/chef/cookbooks/nginx_install/recipes >> /tmp/user_data.log 2>&1
                   mkdir -p /opt/chef/cookbooks/nginx_install/templates >> /tmp/user_data.log 2>&1
                   cd /opt/chef
@@ -79,7 +80,7 @@ resource "aws_instance" "nginx_instance" {
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/metadata.rb"))}' | base64 -d > cookbooks/nginx_install/metadata.rb 2>>/tmp/user_data.log || echo "metadata.rb write failed" >> /tmp/user_data.log
                   ls -R cookbooks/nginx_install/ > /tmp/cookbook_files.txt 2>>/tmp/user_data.log
                   echo '{ "install_method": "${var.install_method}", "nginx_version": "${var.nginx_version}", "worker_processes": "${var.worker_processes}", "listen_port": "${var.nginx_port}", "server_name": "${var.server_name}" }' > attributes.json 2>>/tmp/user_data.log
-                  chef-solo -c solo.rb -j attributes.json -o nginx_install::default -l debug > /tmp/chef_output.txt 2>&1 || { echo "Chef failed" >> /tmp/chef_error.txt; cat /tmp/chef_error.txt >> /tmp/user_data.log; }
+                  chef-solo --chef-license accept -c solo.rb -j attributes.json -o nginx_install::default -l debug > /tmp/chef_output.txt 2>&1 || { echo "Chef failed" >> /tmp/chef_error.txt; cat /tmp/chef_error.txt >> /tmp/user_data.log; exit 1; }
                   dpkg -l | grep nginx > /tmp/nginx_check.txt 2>&1 || echo "Nginx not installed" >> /tmp/nginx_check.txt
                   systemctl status nginx > /tmp/nginx_status.txt 2>&1 || true
                   echo "user_data script completed" >> /tmp/user_data.log
