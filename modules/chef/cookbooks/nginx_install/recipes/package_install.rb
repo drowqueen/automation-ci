@@ -5,7 +5,7 @@ package 'nginx' do
   action :install
 end
 
-# Ensure the default service is running (uses /lib/systemd/system/nginx.service)
+# Use the default APT-provided service
 service 'nginx' do
   action [:enable, :start]
 end

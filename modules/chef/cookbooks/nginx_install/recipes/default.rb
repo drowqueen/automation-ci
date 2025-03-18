@@ -2,14 +2,15 @@ install_method = node['install_method']
 
 case install_method
 when 'package'
+  Chef::Log.info("Including package_install recipe")
   include_recipe 'nginx_install::package_install'
 when 'source'
+  Chef::Log.info("Including source_install recipe")
   include_recipe 'nginx_install::source_install'
 else
   raise "Invalid install_method: #{install_method}. Must be 'package' or 'source'"
 end
 
-# Apply custom configuration
 template '/etc/nginx/nginx.conf' do
   source 'nginx.conf.erb'
   owner 'root'
@@ -24,7 +25,6 @@ template '/etc/nginx/nginx.conf' do
   notifies :restart, 'service[nginx]', :delayed
 end
 
-# Only define service resource, let specific recipes manage it
 service 'nginx' do
-  action :nothing
+  action :nothing  # Managed by specific recipes
 end
