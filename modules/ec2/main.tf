@@ -54,35 +54,45 @@ resource "aws_instance" "nginx_instance" {
                   #!/bin/bash
                   set -x  # Enable command tracing
                   echo "Starting user_data script" > /tmp/user_data.log
+
+                  # Update package list
                   apt-get update >> /tmp/user_data.log 2>&1 || { echo "apt-get update failed" >> /tmp/user_data.log; exit 1; }
-                  apt-get install -y wget >> /tmp/user_data.log 2>&1 || { echo "apt-get install wget failed" >> /tmp/user_data.log; exit 1; }
-                  wget -q https://packages.chef.io/files/stable/chef/17.10.0/ubuntu/20.04/chef_17.10.0-1_amd64.deb >> /tmp/user_data.log 2>&1 || { echo "wget chef failed" >> /tmp/user_data.log; exit 1; }
-                  dpkg -i chef_17.10.0-1_amd64.deb >> /tmp/user_data.log 2>&1 || { echo "dpkg install chef failed" >> /tmp/user_data.log; exit 1; }
-                  if ! command -v chef-solo >/dev/null 2>&1; then
-                    echo "chef-solo not found after install" >> /tmp/user_data.log
-                    exit 1
+
+                  # Install dependencies for both methods
+                  apt-get install -y wget git build-essential libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev >> /tmp/user_data.log 2>&1 || { echo "Installing build dependencies failed" >> /tmp/user_data.log; exit 1; }
+
+                  # Choose installation method based on variable
+                  if [ "${var.install_method}" = "package" ]; then
+                    # Install Nginx via apt-get
+                    apt-get install -y nginx >> /tmp/user_data.log 2>&1 || { echo "apt-get install nginx failed" >> /tmp/user_data.log; exit 1; }
+                    systemctl enable nginx >> /tmp/user_data.log 2>&1
+                    systemctl start nginx >> /tmp/user_data.log 2>&1 || { echo "Failed to start nginx" >> /tmp/user_data.log; exit 1; }
+                  elif [ "${var.install_method}" = "source" ]; then
+                    # Install Nginx from source
+                    cd /tmp
+                    wget "http://nginx.org/download/nginx-${var.nginx_version}.tar.gz" >> /tmp/user_data.log 2>&1 || { echo "wget nginx source failed" >> /tmp/user_data.log; exit 1; }
+                    tar -xzf "nginx-${var.nginx_version}.tar.gz" >> /tmp/user_data.log 2>&1 || { echo "tar extract failed" >> /tmp/user_data.log; exit 1; }
+                    cd "nginx-${var.nginx_version}"
+                    ./configure --prefix=/usr/local/nginx --with-http_ssl_module --with-pcre >> /tmp/user_data.log 2>&1 || { echo "nginx configure failed" >> /tmp/user_data.log; exit 1; }
+                    make >> /tmp/user_data.log 2>&1 || { echo "nginx make failed" >> /tmp/user_data.log; exit 1; }
+                    make install >> /tmp/user_data.log 2>&1 || { echo "nginx make install failed" >> /tmp/user_data.log; exit 1; }
+                    ln -s /usr/local/nginx/sbin/nginx /usr/local/bin/nginx >> /tmp/user_data.log 2>&1
+                    # Start Nginx
+                    /usr/local/nginx/sbin/nginx >> /tmp/user_data.log 2>&1 || { echo "Failed to start nginx from source" >> /tmp/user_data.log; exit 1; }
                   else
-                    echo "chef-solo found at $(which chef-solo)" >> /tmp/user_data.log
+                    echo "Invalid install_method: ${var.install_method}. Use 'package' or 'source'" >> /tmp/user_data.log
+                    exit 1
                   fi
-                  # Accept Chef license (both config file and flag)
-                  mkdir -p /etc/chef >> /tmp/user_data.log 2>&1
-                  echo 'chef_license "accept"' > /etc/chef/client.rb 2>>/tmp/user_data.log || { echo "Failed to write client.rb" >> /tmp/user_data.log; exit 1; }
-                  export CHEF_LICENSE="accept"  # Set environment variable as fallback
-                  mkdir -p /opt/chef/cookbooks/nginx_install/recipes >> /tmp/user_data.log 2>&1
-                  mkdir -p /opt/chef/cookbooks/nginx_install/templates >> /tmp/user_data.log 2>&1
-                  cd /opt/chef
-                  echo 'cookbook_path "/opt/chef/cookbooks"' > solo.rb
-                  echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/recipes/default.rb"))}' | base64 -d > cookbooks/nginx_install/recipes/default.rb 2>>/tmp/user_data.log || echo "default.rb write failed" >> /tmp/user_data.log
-                  echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/recipes/package_install.rb"))}' | base64 -d > cookbooks/nginx_install/recipes/package_install.rb 2>>/tmp/user_data.log || echo "package_install.rb write failed" >> /tmp/user_data.log
-                  echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/recipes/source_install.rb"))}' | base64 -d > cookbooks/nginx_install/recipes/source_install.rb 2>>/tmp/user_data.log || echo "source_install.rb write failed" >> /tmp/user_data.log
-                  echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/templates/nginx.conf.erb"))}' | base64 -d > cookbooks/nginx_install/templates/nginx.conf.erb 2>>/tmp/user_data.log || echo "nginx.conf.erb write failed" >> /tmp/user_data.log
-                  echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/templates/nginx.service.erb"))}' | base64 -d > cookbooks/nginx_install/templates/nginx.service.erb 2>>/tmp/user_data.log || echo "nginx.service.erb write failed" >> /tmp/user_data.log
-                  echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/metadata.rb"))}' | base64 -d > cookbooks/nginx_install/metadata.rb 2>>/tmp/user_data.log || echo "metadata.rb write failed" >> /tmp/user_data.log
-                  ls -R cookbooks/nginx_install/ > /tmp/cookbook_files.txt 2>>/tmp/user_data.log
-                  echo '{ "install_method": "${var.install_method}", "nginx_version": "${var.nginx_version}", "worker_processes": "${var.worker_processes}", "listen_port": "${var.nginx_port}", "server_name": "${var.server_name}" }' > attributes.json 2>>/tmp/user_data.log
-                  chef-solo --chef-license accept -c solo.rb -j attributes.json -o nginx_install::default -l debug > /tmp/chef_output.txt 2>&1 || { echo "Chef failed" >> /tmp/chef_error.txt; cat /tmp/chef_error.txt >> /tmp/user_data.log; exit 1; }
-                  dpkg -l | grep nginx > /tmp/nginx_check.txt 2>&1 || echo "Nginx not installed" >> /tmp/nginx_check.txt
-                  systemctl status nginx > /tmp/nginx_status.txt 2>&1 || true
+
+                  # Verify installation
+                  if [ -f /usr/sbin/nginx ] || [ -f /usr/local/nginx/sbin/nginx ]; then
+                    nginx -v > /tmp/nginx_check.txt 2>&1
+                    echo "Nginx installed successfully" >> /tmp/user_data.log
+                  else
+                    echo "Nginx installation failed" >> /tmp/user_data.log
+                    exit 1
+                  fi
+
                   echo "user_data script completed" >> /tmp/user_data.log
                   EOF
 
