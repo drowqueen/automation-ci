@@ -1,3 +1,4 @@
+
 name: Deploy Nginx Instances
 
 on:
@@ -37,9 +38,11 @@ jobs:
 
       - name: Deploy Instances
         env:
-          CHEF_LICENSE: "accept"  # Added from earlier fix
+          CHEF_LICENSE: "accept"
         run: |
+          set -x  # Enable tracing for debugging
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "Changed files: $CHANGED_FILES"
           if ls live/* >/dev/null 2>&1; then
             for dir in live/*; do
               if [ -f "$dir/terragrunt.hcl" ]; then
@@ -49,7 +52,7 @@ jobs:
                   pwd
                   terragrunt init -upgrade -no-color --terragrunt-non-interactive || { echo "Init failed"; exit 1; }
                   terragrunt apply -auto-approve -no-color --terragrunt-non-interactive || { echo "Apply failed"; exit 1; }
-                  PUBLIC_IP=$(terragrunt output -raw instance_public_ip)
+                  PUBLIC_IP=$(terragrunt output -raw instance_public_ip 2>/dev/null || echo "Not available")
                   NGINX_VERSION=$(grep -oP 'nginx_version\s*=\s*"\K[^"]+' terragrunt.hcl || echo "default")
                   NGINX_PORT=$(grep -oP 'nginx_port\s*=\s*"\K[^"]+' terragrunt.hcl || echo "80")
                   SERVER_NAME=$(grep -oP 'server_name\s*=\s*"\K[^"]+' terragrunt.hcl || echo "localhost")
@@ -71,4 +74,10 @@ jobs:
                   echo "Skipping $dir (unchanged)"
                 fi
               else
-                echo "Skipping $dir (no terragrunt.hcl found
+                echo "Skipping $dir (no terragrunt.hcl found)"
+              fi
+            done
+          else
+            echo "No directories found in live/. Skipping deployment."
+          fi
+          set +x  # Disable tracing
