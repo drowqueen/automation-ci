@@ -28,6 +28,10 @@ variable "instance_name" {
 variable "install_method" {
   description = "Method to install NGINX (package or source)"
   type        = string
+  validation {
+    condition     = contains(["package", "source"], var.install_method)
+    error_message = "install_method must be either 'package' or 'source'."
+  }
 }
 
 variable "nginx_version" {
