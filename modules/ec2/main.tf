@@ -53,8 +53,8 @@ resource "aws_instance" "nginx_instance" {
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/metadata.rb"))}' | base64 -d > cookbooks/nginx_install/metadata.rb
                   ls -R cookbooks/nginx_install/ > /tmp/cookbook_files.txt
                   echo '{ "install_method": "${var.install_method}", "nginx_version": "${var.nginx_version}", "worker_processes": "${var.worker_processes}", "listen_port": "${var.nginx_port}", "server_name": "${var.server_name}" }' > attributes.json
-                  chef-solo -c solo.rb -j attributes.json -o nginx_install::default > /tmp/chef_output.txt 2>&1 || echo "Chef failed" > /tmp/chef_error.txt
-                  dpkg -l | grep nginx > /tmp/nginx_check.txt 2>&1
+                  chef-solo -c solo.rb -j attributes.json -o nginx_install::default -l debug > /tmp/chef_output.txt 2>&1 || echo "Chef failed" > /tmp/chef_error.txt
+                  dpkg -l | grep nginx > /tmp/nginx_check.txt 2>&1 || echo "Nginx not installed" >> /tmp/nginx_check.txt
                   systemctl status nginx > /tmp/nginx_status.txt 2>&1 || true
                   EOF
 
