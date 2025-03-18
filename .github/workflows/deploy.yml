@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**/*.hcl'  # Trigger only when .hcl files change  
 
 jobs:
   deploy:

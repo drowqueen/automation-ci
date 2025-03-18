@@ -7,7 +7,7 @@ terraform {
 }
 
 resource "aws_security_group" "nginx_sg" {
-  name        = "nginx-sg"
+  name        = "${var.instance_name}-sg"
   description = "Allow SSH and Nginx traffic"
 
   ingress {

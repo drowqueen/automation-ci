@@ -15,6 +15,6 @@ inputs = {
   nginx_version     = "1.27.4"
   source_branch     = "main"
   worker_processes  = "auto"
-  nginx_port        = "8080"
+  nginx_port        = "80"
   server_name       = "localhost"
 }
