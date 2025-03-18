@@ -5,6 +5,7 @@ package 'nginx' do
   action :install
 end
 
+# Ensure the default service is running (uses /lib/systemd/system/nginx.service)
 service 'nginx' do
-  action [:enable, :start]  # Explicitly ensure it’s running
+  action [:enable, :start]
 end
