@@ -1,23 +1,35 @@
-
 #!/bin/bash
 
 set -e  # Exit on error
 
-# Arguments: version, port, server_name, instance_ip, ssh_key_path
-[ $# -ne 5 ] && { echo "Usage: $0 <version> <port> <server_name> <ip> <ssh_key>"; exit 1; }
+# Arguments: version, port, server_name, instance_ip, ssh_key_path, install_method
+echo "Received $# arguments: $@"
+[ $# -ne 6 ] && { echo "Usage: $0 <version> <port> <server_name> <ip> <ssh_key> <install_method>"; exit 1; }
 
 VERSION="$1"
 PORT="$2"
 SERVER_NAME="$3"
 IP="$4"
 KEY="$5"
+INSTALL_METHOD="$6"
 
 # SSH command alias for brevity
 SSH="ssh -o StrictHostKeyChecking=no -i $KEY ubuntu@$IP"
 
-# Check installation and running status
-$SSH "which nginx >/dev/null && systemctl is-active nginx >/dev/null" || { echo "Nginx not installed or not running"; exit 1; }
-echo "Nginx installed and running"
+# Check if Nginx is installed based on install method
+if [ "$INSTALL_METHOD" = "package" ]; then
+    $SSH "dpkg -l | grep -q nginx" || { echo "Nginx package not installed"; exit 1; }
+    echo "Nginx package is installed"
+elif [ "$INSTALL_METHOD" = "source" ]; then
+    $SSH "test -f /usr/local/nginx/sbin/nginx" || { echo "Nginx binary not installed at /usr/local/nginx/sbin/nginx"; exit 1; }
+    echo "Nginx source binary is installed"
+else
+    echo "Unknown install_method: $INSTALL_METHOD"; exit 1
+fi
+
+# Check if Nginx service is running
+$SSH "systemctl is-active nginx >/dev/null" || { echo "Nginx service not running"; exit 1; }
+echo "Nginx service is running"
 
 # Check version
 $SSH "nginx -v 2>&1 | grep -q $VERSION" || { echo "Expected version $VERSION not found"; exit 1; }
