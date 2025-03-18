@@ -1,3 +1,7 @@
+terraform {
+  backend "s3" {}
+}
+
 provider "aws" {
   region = var.aws_region
 }
@@ -47,7 +51,6 @@ resource "aws_instance" "nginx_instance" {
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/templates/nginx.conf.erb"))}' | base64 -d > cookbooks/nginx_install/templates/nginx.conf.erb
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/templates/nginx.service.erb"))}' | base64 -d > cookbooks/nginx_install/templates/nginx.service.erb
                   echo '${base64encode(file("${path.module}/../chef/cookbooks/nginx_install/metadata.rb"))}' | base64 -d > cookbooks/nginx_install/metadata.rb
-                  # Debug: List files to confirm
                   ls -R cookbooks/nginx_install/ > /tmp/cookbook_files.txt
                   chef-solo -c solo.rb -o nginx_install::default || echo "Chef failed" > /tmp/chef_error.txt
                   EOF
