@@ -46,7 +46,7 @@ resource "aws_security_group" "nginx_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Prevent destruction if attached to instance
