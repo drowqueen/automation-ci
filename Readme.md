@@ -1,4 +1,4 @@
-This repository automates the deployment of Nginx instances on AWS EC2 using Terraform, Terragrunt, and GitHub Actions. It supports both package and source installation methods for Nginx, with a focus on folder-agnostic logic under the live/ directory.
+This repository automates the deployment of Nginx instances on AWS EC2 using Terragrunt, and GitHub Actions. It supports both package and source installation methods for Nginx, with a focus on folder-agnostic logic under the live/ directory. It creates dynamic security groups based on the listening port for each instance.
 
 # Prerequisites 
 * AWS Credentials: Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in GitHub Secrets.
@@ -38,14 +38,14 @@ Push changes to the branch, when the branch is merged it will trigger the github
 # Testing nginx installation
 
 Check the GitHub Actions workflow logs or use terragrunt output command in live/instance-name folder to retrieve the public IP.  Run the test script from repo root using the parameters you provided and the public IP of the instance:
-```
+````
 ./scripts/test-nginx.sh <NGINX Version> <port> <server_name> <public_IP> <install_method> /path/to/ssh-key-pair
 ```
 
 Example: 
 
-```
- ./scripts/test-nginx.sh '1.26.2' '80' 'localhost' '1.2.3.4' 'source' nginx-key.pem 
+````
+ ./scripts/test-nginx.sh '1.24.0' '8080' 'test2' '176.34.148.205' 'package' nginx-key.pem 
 ```
 
 
