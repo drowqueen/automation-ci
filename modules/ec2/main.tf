@@ -6,7 +6,23 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Data block to look up existing SG
+data "aws_security_group" "existing_nginx_sg" {
+  name   = "nginx-sg-${var.instance_name}"
+  filter {
+    name   = "group-name"
+    values = ["nginx-sg-${var.instance_name}"]
+  }
+  count = local.sg_exists ? 1 : 0  # Only query if we expect it to exist
+}
+
+locals {
+  sg_exists = false  # Set to true if you know it exists; we'll create it otherwise
+}
+
+# Create SG only if it doesn't exist
 resource "aws_security_group" "nginx_sg" {
+  count       = local.sg_exists ? 0 : 1
   name        = "nginx-sg-${var.instance_name}"
   description = "Allow SSH and Nginx traffic"
   ingress {
@@ -33,23 +49,24 @@ resource "aws_instance" "nginx_instance" {
   ami           = var.ami_id
   instance_type = var.instance_type
   key_name      = var.key_name
-  vpc_security_group_ids = [aws_security_group.nginx_sg.id]
+  vpc_security_group_ids = [local.sg_exists ? data.aws_security_group.existing_nginx_sg[0].id : aws_security_group.nginx_sg[0].id]
   user_data     = <<-EOF
                   #!/bin/bash
                   set -x  # Enable command tracing
                   echo "Starting user_data script" > /tmp/user_data.log
                   apt-get update >> /tmp/user_data.log 2>&1 || { echo "apt-get update failed" >> /tmp/user_data.log; exit 1; }
-                  # Install Chef via official package
                   apt-get install -y wget >> /tmp/user_data.log 2>&1 || { echo "apt-get install wget failed" >> /tmp/user_data.log; exit 1; }
                   wget -q https://packages.chef.io/files/stable/chef/17.10.0/ubuntu/20.04/chef_17.10.0-1_amd64.deb >> /tmp/user_data.log 2>&1 || { echo "wget chef failed" >> /tmp/user_data.log; exit 1; }
                   dpkg -i chef_17.10.0-1_amd64.deb >> /tmp/user_data.log 2>&1 || { echo "dpkg install chef failed" >> /tmp/user_data.log; exit 1; }
-                  # Verify chef-solo
                   if ! command -v chef-solo >/dev/null 2>&1; then
                     echo "chef-solo not found after install" >> /tmp/user_data.log
                     exit 1
                   else
                     echo "chef-solo found at $(which chef-solo)" >> /tmp/user_data.log
                   fi
+                  # Accept Chef license
+                  mkdir -p /etc/chef >> /tmp/user_data.log 2>&1
+                  echo 'chef_license "accept"' > /etc/chef/client.rb 2>>/tmp/user_data.log || { echo "Failed to write client.rb" >> /tmp/user_data.log; exit 1; }
                   mkdir -p /opt/chef/cookbooks/nginx_install/recipes >> /tmp/user_data.log 2>&1
                   mkdir -p /opt/chef/cookbooks/nginx_install/templates >> /tmp/user_data.log 2>&1
                   cd /opt/chef

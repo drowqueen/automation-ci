@@ -1,4 +1,4 @@
-name: Deploy Nginx Instances
+ name: Deploy Nginx Instances
 
 on:
   push:
@@ -36,6 +36,8 @@ jobs:
           aws-region: eu-west-1
 
       - name: Deploy Instances
+        env:
+          CHEF_LICENSE: "accept"  # Ensure Chef license is accepted if invoked
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
           if ls live/* >/dev/null 2>&1; then
@@ -45,9 +47,9 @@ jobs:
                   echo "Deploying $dir (new or changed)..."
                   cd "$dir"
                   pwd
-                  terragrunt init -upgrade -no-color --terragrunt-non-interactive || { echo "Init failed"; exit 1; }
-                  terragrunt apply -auto-approve -no-color --terragrunt-non-interactive || { echo "Apply failed"; exit 1; }
-                  PUBLIC_IP=$(terragrunt output -raw instance_public_ip)
+                  terragrunt init -upgrade -no-color --terragrunt-non-interactive || { echo "Init failed"; cat terraform.log; exit 1; }
+                  terragrunt apply -auto-approve -no-color --terragrunt-non-interactive || { echo "Apply failed"; cat terraform.log; exit 1; }
+                  PUBLIC_IP=$(terragrunt output -raw instance_public_ip 2>/dev/null || echo "Not available")
                   NGINX_VERSION=$(grep -oP 'nginx_version\s*=\s*"\K[^"]+' terragrunt.hcl || echo "default")
                   NGINX_PORT=$(grep -oP 'nginx_port\s*=\s*"\K[^"]+' terragrunt.hcl || echo "80")
                   SERVER_NAME=$(grep -oP 'server_name\s*=\s*"\K[^"]+' terragrunt.hcl || echo "localhost")
