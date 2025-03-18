@@ -40,9 +40,12 @@ jobs:
           echo "Writing SSH key to /tmp/ssh_key.pem"
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > /tmp/ssh_key.pem
           chmod 600 /tmp/ssh_key.pem
-          # Verify key format
-          head -n 1 /tmp/ssh_key.pem
-          file /tmp/ssh_key.pem
+          echo "First line of key:"
+          head -n 1 /tmp/ssh_key.pem  # Should show -----BEGIN
+          echo "File type:"
+          file /tmp/ssh_key.pem       # Should show PEM or ASCII text
+          echo "Key contents (partial):"
+          cat /tmp/ssh_key.pem | head -n 5  # Show start of key for debug
 
       - name: Deploy and Test Instances
         run: |
@@ -69,10 +72,10 @@ jobs:
                   echo "Install Method: $INSTALL_METHOD"
                   echo "Testing instance at $PUBLIC_IP..."
                   chmod +x ../../scripts/test-nginx.sh
-                  # Debug test script call
                   echo "Test script args: [$NGINX_VERSION] [$NGINX_PORT] [$SERVER_NAME] [$PUBLIC_IP] [/tmp/ssh_key.pem] [$INSTALL_METHOD]"
                   ../../scripts/test-nginx.sh "$NGINX_VERSION" "$NGINX_PORT" "$SERVER_NAME" "$PUBLIC_IP" "/tmp/ssh_key.pem" "$INSTALL_METHOD" || {
                     echo "Tests failed for $dir, retrieving debug logs..."
+                    sleep 60  # Increased initial delay for instance boot
                     for i in {1..10}; do
                       ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem ubuntu@$PUBLIC_IP "cat /tmp/user_data.log || echo 'No user_data.log'; cat /tmp/chef_output.txt || echo 'No chef_output.txt'; cat /tmp/nginx_check.txt || echo 'No nginx_check.txt'; cat /tmp/nginx_status.txt || echo 'No nginx_status.txt'" && break
                       echo "SSH attempt $i failed, retrying in 15 seconds..."
